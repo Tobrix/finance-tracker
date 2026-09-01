@@ -15,22 +15,18 @@
         ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Spinner pro načítání AI */
         .loader { border: 4px solid #f3f4f6; border-top: 4px solid #6366f1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen relative">
     
-    <!-- Overlay pro načítání -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex-col items-center justify-center text-white">
         <div class="loader mb-4"></div>
         <h2 class="text-xl font-bold">Gemini analyzuje transakce...</h2>
         <p class="text-slate-200 mt-2 text-sm">To může trvat několik sekund v závislosti na velikosti výpisu.</p>
     </div>
 
-    <!-- Horní navigace -->
     <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row justify-between h-auto sm:h-16 items-center py-4 sm:py-0 gap-4">
@@ -56,12 +52,10 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Přehled financí</h1>
             </div>
-            
             <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
                 <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
                 <select id="monthSelector" onchange="changeMonth()" class="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer">
@@ -71,23 +65,19 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-emerald-200 transition-colors">
-                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="trending-up" class="w-12 h-12 text-emerald-500"></i></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Příjmy</h3>
                 <p class="text-2xl font-bold text-slate-900" id="totalIncome">0 Kč</p>
             </div>
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-rose-200 transition-colors">
-                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="trending-down" class="w-12 h-12 text-rose-500"></i></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Výdaje</h3>
                 <p class="text-2xl font-bold text-slate-900" id="totalExpense">0 Kč</p>
             </div>
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-sky-200 transition-colors">
-                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="pie-chart" class="w-12 h-12 text-sky-500"></i></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Investice</h3>
                 <p class="text-2xl font-bold text-slate-900" id="totalInvest">0 Kč</p>
             </div>
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-200 transition-colors">
-                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="piggy-bank" class="w-12 h-12 text-indigo-500"></i></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Zbývá z příjmů</h3>
                 <p class="text-2xl font-bold text-slate-900" id="totalFree">0 Kč</p>
             </div>
@@ -95,47 +85,32 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-6">
-                    <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center"><i data-lucide="donut" class="w-4 h-4 text-rose-500"></i></div>
-                    <h3 class="font-semibold text-slate-800">Struktura výdajů</h3>
-                </div>
-                <div class="relative h-[250px] w-full flex justify-center">
-                    <canvas id="expenseChart"></canvas>
-                </div>
+                <h3 class="font-semibold text-slate-800 mb-4">Struktura výdajů</h3>
+                <div class="relative h-[250px] w-full flex justify-center"><canvas id="expenseChart"></canvas></div>
             </div>
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex items-center gap-2 mb-6">
-                    <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center"><i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-500"></i></div>
-                    <h3 class="font-semibold text-slate-800">Celkové Cash Flow</h3>
-                </div>
-                <div class="relative h-[250px] w-full flex justify-center">
-                    <canvas id="cashflowChart"></canvas>
-                </div>
+                <h3 class="font-semibold text-slate-800 mb-4">Celkové Cash Flow</h3>
+                <div class="relative h-[250px] w-full flex justify-center"><canvas id="cashflowChart"></canvas></div>
             </div>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="list-collapse" class="w-5 h-5 text-slate-400"></i>
-                    <h3 class="font-semibold text-slate-800">Transakce v tomto období</h3>
-                </div>
+                <h3 class="font-semibold text-slate-800">Transakce v tomto období</h3>
             </div>
             <div class="overflow-x-auto max-h-[500px]">
                 <table class="w-full text-left border-collapse min-w-full relative">
                     <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Datum</th>
-                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pohyb</th>
-                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kategorie</th>
-                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Částka (CZK)</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase">Datum</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase">Pohyb</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase">Kategorie</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase text-right">Částka (CZK)</th>
                         </tr>
                     </thead>
-                    <tbody id="transactionList" class="divide-y divide-slate-100 text-sm">
-                    </tbody>
+                    <tbody id="transactionList" class="divide-y divide-slate-100 text-sm"></tbody>
                 </table>
                 <div id="emptyState" class="hidden flex-col items-center justify-center py-12 text-slate-400">
-                    <i data-lucide="inbox" class="w-12 h-12 mb-3 text-slate-300"></i>
                     <p>Žádné transakce v tomto období.</p>
                 </div>
             </div>
@@ -144,21 +119,16 @@
 
     <script>
         lucide.createIcons();
-
         let allTransactions = JSON.parse(localStorage.getItem('myFinances')) || [];
         let currentMonth = 'All'; 
-        let expenseChartObj = null;
-        let cashflowChartObj = null;
+        let expenseChartObj = null, cashflowChartObj = null;
 
-        // Správa API Klíče
         const apiKeyInput = document.getElementById('apiKeyInput');
         apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
-        apiKeyInput.addEventListener('change', (e) => localStorage.setItem('geminiApiKey', e.target.value));
+        apiKeyInput.addEventListener('change', (e) => localStorage.setItem('geminiApiKey', e.target.value.trim()));
 
-        // Kategorie pro AI prompt
         const validCategories = ["Výplata / Příjem", "Převody / Dárky", "Investice", "Předplatné", "Potraviny", "Restaurace", "Online nákupy", "Auto / Doprava", "Oblečení / Kosmetika", "Hry / Zábava", "Bydlení", "Spoření", "Ostatní výdaje", "Ostatní příchozí"];
 
-        // Lokální záložní kategorizace
         function fallbackCategorize(text, amount) {
             const rules = [
                 { cat: 'Výplata / Příjem', type: 'in', keywords: ['pikly', 'výplata', 'mzda'] },
@@ -175,53 +145,36 @@
             return { cat: amount > 0 ? 'Ostatní příchozí' : 'Ostatní výdaje', type: amount > 0 ? 'in' : 'out' };
         }
 
-        // Funkce pro volání Gemini API
         async function categorizeWithGemini(transactionsToCategorize) {
             const apiKey = apiKeyInput.value.trim();
             if (!apiKey) throw new Error("Chybí API klíč");
 
-            // Připravíme data pro prompt minimalizovaně pro snížení tokenů
-            const dataForAI = transactionsToCategorize.map((t, index) => ({
-                id: index, text: t.note, amount: t.amount
-            }));
-
-            const prompt = `Kategorizuj následující bankovní transakce. 
-            Použij POUZE a přesně jednu z těchto kategorií: [${validCategories.join(', ')}].
-            Pro investiční a spořicí platformy použij vždy typ "inv", pro běžné příjmy "in", pro výdaje "out".
-            
-            Vrať odpověď jako čisté JSON pole bez formátování markdown (\`\`\`), pouze validní JSON objekt.
-            Formát výstupu: [{"id": 0, "category": "Potraviny", "type": "out"}, ...]
-
-            Vstupní data:
-            ${JSON.stringify(dataForAI)}`;
+            const dataForAI = transactionsToCategorize.map((t, index) => ({ id: index, text: t.note, amount: t.amount }));
+            const prompt = `Kategorizuj transakce. Použij POUZE tyto kategorie: [${validCategories.join(', ')}]. Pro investice použij "inv", pro příjmy "in", pro výdaje "out". Vrať POUZE čisté JSON pole bez markdown značek: [{"id": 0, "category": "Potraviny", "type": "out"}, ...] Data: ${JSON.stringify(dataForAI)}`;
 
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { temperature: 0.1 }
-                })
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1 } })
             });
 
-            if (!response.ok) throw new Error("Chyba při komunikaci s API");
+            if (!response.ok) {
+                const errJson = await response.json();
+                throw new Error(errJson.error?.message || "Chyba API");
+            }
             
             const result = await response.json();
             let jsonText = result.candidates[0].content.parts[0].text;
-            // Očištění o případný markdown block, pokud ho AI přece jen pošle
             jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
-            
             return JSON.parse(jsonText);
         }
 
-        // Zpracování souboru a orchestrace
         document.getElementById('csvUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const overlay = document.getElementById('loadingOverlay');
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
+            overlay.classList.remove('hidden'); overlay.classList.add('flex');
 
             Papa.parse(file, {
                 header: true, skipEmptyLines: true, encoding: "UTF-8",
@@ -243,11 +196,9 @@
                     try {
                         let aiResults = [];
                         if (apiKeyInput.value.trim()) {
-                            // Odeslání do Gemini (v reálné aplikaci s obrovským CSV by se muselo stránkovat, pro stovky řádků Gemini 1.5 Flash stačí naráz)
                             aiResults = await categorizeWithGemini(extractedTx);
                         }
                         
-                        // Sjednocení AI výsledků nebo fallbacku
                         const finalTx = extractedTx.map((tx, idx) => {
                             const aiData = aiResults.find(r => r.id === idx);
                             if (aiData && validCategories.includes(aiData.category)) {
@@ -260,7 +211,8 @@
                         allTransactions = [...finalTx, ...allTransactions];
                         localStorage.setItem('myFinances', JSON.stringify(allTransactions));
                     } catch (error) {
-                        alert("AI se nepodařilo aplikovat. Data budou roztříděna ručními pravidly. Zkontroluj API klíč.");
+                        console.error(error);
+                        alert("Chyba AI: " + error.message + "\n\nData byla roztříděna pomocí záložních pravidel.");
                         const finalTx = extractedTx.map(tx => {
                             const fb = fallbackCategorize(tx.note, tx.amount);
                             return { ...tx, category: fb.cat, type: fb.type };
@@ -269,8 +221,7 @@
                         localStorage.setItem('myFinances', JSON.stringify(allTransactions));
                     }
 
-                    overlay.classList.add('hidden');
-                    overlay.classList.remove('flex');
+                    overlay.classList.add('hidden'); overlay.classList.remove('flex');
                     e.target.value = '';
                     refreshApp();
                 }
