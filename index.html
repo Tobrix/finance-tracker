@@ -4,94 +4,158 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Můj Finanční Dashboard</title>
+    <!-- Moderní font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ikonky Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js a PapaParse -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Vlastní scrollbar pro tabulku */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
-    <div class="max-w-7xl mx-auto space-y-6">
-        
-        <!-- Hlavička s nahráváním -->
-        <header class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">Měsíční Cash Flow</h1>
-                <p class="text-sm text-gray-500">Data zůstávají pouze ve tvém prohlížeči</p>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    
+    <!-- Horní navigace -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 p-2 rounded-lg">
+                        <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg tracking-tight text-slate-900">CashFlow<span class="text-indigo-600">Pro</span></span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="clearData()" class="flex items-center gap-1 px-3 py-2 text-sm font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Vymazat
+                    </button>
+                    <label class="cursor-pointer bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                        Nahrát CSV
+                        <input type="file" accept=".csv" class="hidden" id="csvUpload">
+                    </label>
+                </div>
             </div>
-            <div class="mt-4 md:mt-0 flex gap-4">
-                <button onclick="clearData()" class="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">Vymazat data</button>
-                <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm">
-                    Nahrát CSV z banky
-                    <input type="file" accept=".csv" class="hidden" id="csvUpload">
-                </label>
-            </div>
-        </header>
+        </div>
+    </nav>
 
-        <!-- Hlavní ukazatele -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-[#82ca9d]">
-                <h3 class="text-sm font-medium text-gray-500 mb-1">Celkem příjmy</h3>
-                <p class="text-2xl font-bold text-gray-900" id="totalIncome">0 Kč</p>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Hlavička a filtr měsíců -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Přehled financí</h1>
+                <p class="text-sm text-slate-500 mt-1">Data se analyzují lokálně ve tvém zařízení</p>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-[#fca5a5]">
-                <h3 class="text-sm font-medium text-gray-500 mb-1">Celkem výdaje</h3>
-                <p class="text-2xl font-bold text-gray-900" id="totalExpense">0 Kč</p>
+            
+            <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
+                <select id="monthSelector" onchange="changeMonth()" class="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer">
+                    <option value="All">Všechny měsíce</option>
+                </select>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-[#38bdf8]">
-                <h3 class="text-sm font-medium text-gray-500 mb-1">Celkem investice</h3>
-                <p class="text-2xl font-bold text-gray-900" id="totalInvest">0 Kč</p>
+        </div>
+
+        <!-- KPI Karty -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-emerald-200 transition-colors">
+                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="trending-up" class="w-12 h-12 text-emerald-500"></i></div>
+                <h3 class="text-sm font-medium text-slate-500 mb-1">Příjmy</h3>
+                <p class="text-2xl font-bold text-slate-900" id="totalIncome">0 Kč</p>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-[#fbbf24]">
-                <h3 class="text-sm font-medium text-gray-500 mb-1">Volné prostředky</h3>
-                <p class="text-2xl font-bold text-gray-900" id="totalFree">0 Kč</p>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-rose-200 transition-colors">
+                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="trending-down" class="w-12 h-12 text-rose-500"></i></div>
+                <h3 class="text-sm font-medium text-slate-500 mb-1">Výdaje</h3>
+                <p class="text-2xl font-bold text-slate-900" id="totalExpense">0 Kč</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-sky-200 transition-colors">
+                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="pie-chart" class="w-12 h-12 text-sky-500"></i></div>
+                <h3 class="text-sm font-medium text-slate-500 mb-1">Investice & Spoření</h3>
+                <p class="text-2xl font-bold text-slate-900" id="totalInvest">0 Kč</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-200 transition-colors">
+                <div class="absolute right-0 top-0 p-5 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="piggy-bank" class="w-12 h-12 text-indigo-500"></i></div>
+                <h3 class="text-sm font-medium text-slate-500 mb-1">Zbývá z příjmů</h3>
+                <p class="text-2xl font-bold text-slate-900" id="totalFree">0 Kč</p>
             </div>
         </div>
 
         <!-- Grafy -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h3 class="font-semibold text-gray-700 mb-4">Poměr výdajů dle kategorií</h3>
-                <div class="relative h-64 w-full flex justify-center">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-6">
+                    <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center"><i data-lucide="donut" class="w-4 h-4 text-rose-500"></i></div>
+                    <h3 class="font-semibold text-slate-800">Struktura výdajů</h3>
+                </div>
+                <div class="relative h-[250px] w-full flex justify-center">
                     <canvas id="expenseChart"></canvas>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h3 class="font-semibold text-gray-700 mb-4">Cash Flow Přehled</h3>
-                <div class="relative h-64 w-full flex justify-center">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-6">
+                    <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center"><i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-500"></i></div>
+                    <h3 class="font-semibold text-slate-800">Celkové Cash Flow</h3>
+                </div>
+                <div class="relative h-[250px] w-full flex justify-center">
                     <canvas id="cashflowChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Tabulka transakcí -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="font-semibold text-gray-700">Poslední transakce</h3>
+        <!-- Tabulka -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="list-collapse" class="w-5 h-5 text-slate-400"></i>
+                    <h3 class="font-semibold text-slate-800">Transakce v tomto období</h3>
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-full">
-                    <thead class="bg-white border-b border-gray-100">
+            <div class="overflow-x-auto max-h-[500px]">
+                <table class="w-full text-left border-collapse min-w-full relative">
+                    <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Datum</th>
-                            <th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Obchodník / Zpráva</th>
-                            <th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategorie</th>
-                            <th class="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Částka (CZK)</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Datum</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pohyb</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kategorie</th>
+                            <th class="py-3 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Částka (CZK)</th>
                         </tr>
                     </thead>
-                    <tbody id="transactionList" class="divide-y divide-gray-50 text-sm">
+                    <tbody id="transactionList" class="divide-y divide-slate-100 text-sm">
+                        <!-- Zde se vykreslí řádky -->
                     </tbody>
                 </table>
+                <div id="emptyState" class="hidden flex-col items-center justify-center py-12 text-slate-400">
+                    <i data-lucide="inbox" class="w-12 h-12 mb-3 text-slate-300"></i>
+                    <p>Žádné transakce v tomto období.</p>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script>
-        let transactions = JSON.parse(localStorage.getItem('myFinances')) || [];
+        // Inicializace ikon
+        lucide.createIcons();
+
+        // Stavy aplikace
+        let allTransactions = JSON.parse(localStorage.getItem('myFinances')) || [];
+        let currentMonth = 'All'; // Vybraný měsíc ('All' nebo 'YYYY-MM')
+        
         let expenseChartObj = null;
         let cashflowChartObj = null;
 
+        // Pravidla pro automatickou kategorizaci
         const categorizationRules = [
             { cat: 'Výplata / Příjem', type: 'in', keywords: ['pikly', 'výplata', 'mzda'] },
-            { cat: 'Převody od Petry', type: 'in', keywords: ['petra', 'faldíková', 'peťka'] },
+            { cat: 'Převody / Dárky', type: 'in', keywords: ['petra', 'faldíková', 'peťka'] },
             { cat: 'Investice', type: 'inv', keywords: ['trading 212', 'coinmate', 'portu', 'wood & company'] },
             { cat: 'Předplatné', type: 'out', keywords: ['spotify', 'herohero', 'claude', 'apple', 'apple.com', 'distrokid'] },
             { cat: 'Potraviny', type: 'out', keywords: ['lidl', 'kaufland', 'tesco', 'albert', 'hruska'] },
@@ -103,19 +167,46 @@
             { cat: 'Spoření', type: 'inv', keywords: ['spořicí', 'vklad hotovosti'] }
         ];
 
+        // Pomocná funkce na parsování měsíce z různých formátů data ("1. 8. 2026", "2026-08-01", atd.)
+        function extractMonthYear(dateString) {
+            try {
+                if (dateString.includes('.')) {
+                    let parts = dateString.split('.');
+                    if (parts.length >= 3) {
+                        let m = parts[1].trim().padStart(2, '0');
+                        let y = parts[2].trim().substring(0, 4);
+                        return `${y}-${m}`;
+                    }
+                } else if (dateString.includes('-')) {
+                    let parts = dateString.split('-');
+                    return `${parts[0]}-${parts[1]}`;
+                }
+            } catch (e) {}
+            return 'Neznámý';
+        }
+
+        // Formátování '2026-08' na 'Srpen 2026'
+        function formatMonthName(yyyy_mm) {
+            if (yyyy_mm === 'All') return 'Všechny měsíce';
+            if (yyyy_mm === 'Neznámý') return 'Ostatní / Neznámé';
+            
+            const [y, m] = yyyy_mm.split('-');
+            const months = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+            return `${months[parseInt(m)-1]} ${y}`;
+        }
+
         function categorizeTransaction(text, amount) {
             let lowerText = (text || '').toLowerCase();
-            
             for (let rule of categorizationRules) {
                 if (rule.keywords.some(kw => lowerText.includes(kw))) {
                     return { category: rule.cat, type: rule.type };
                 }
             }
-            
             if (amount > 0) return { category: 'Ostatní příchozí', type: 'in' };
             return { category: 'Ostatní výdaje', type: 'out' };
         }
 
+        // Nahrání a zpracování souboru
         document.getElementById('csvUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -127,55 +218,105 @@
                 complete: function(results) {
                     const newTx = [];
                     results.data.forEach(row => {
-                        const rawAmount = row['Zaúčtovaná částka'];
+                        const rawAmount = row['Zaúčtovaná částka'] || row['Částka'];
                         if (!rawAmount) return; 
                         
                         const amount = parseFloat(rawAmount.replace(/\s/g, '').replace(',', '.'));
+                        const dateStr = row['Datum provedení'] || row['Datum'] || new Date().toLocaleDateString('cs-CZ');
+                        const monthYear = extractMonthYear(dateStr);
                         
-                        // Sloučení textů pro přesnější záchyt kategorií
                         const obchodnik = row['Název obchodníka'] || '';
                         const protiucet = row['Název protiúčtu'] || '';
                         const zprava = row['Zpráva'] || '';
-                        
                         const fullContext = `${obchodnik} ${protiucet} ${zprava}`.trim();
                         const displayNote = obchodnik || protiucet || zprava || 'Neznámá platba';
-                        const date = row['Datum provedení'] || new Date().toLocaleDateString('cs-CZ');
 
                         if (!isNaN(amount) && amount !== 0) {
                             const { category, type } = categorizeTransaction(fullContext, amount);
-                            newTx.push({ date, note: displayNote, category, type, amount });
+                            newTx.push({ 
+                                date: dateStr, 
+                                monthYear: monthYear,
+                                note: displayNote, 
+                                category, 
+                                type, 
+                                amount 
+                            });
                         }
                     });
 
-                    transactions = [...newTx, ...transactions];
-                    localStorage.setItem('myFinances', JSON.stringify(transactions));
-                    updateDashboard();
+                    allTransactions = [...newTx, ...allTransactions];
+                    localStorage.setItem('myFinances', JSON.stringify(allTransactions));
+                    refreshApp();
                 }
             });
+            // Reset inputu aby šel nahrát stejný soubor znovu
+            e.target.value = '';
         });
 
         function clearData() {
             if(confirm('Opravdu vymazat všechna data?')) {
-                transactions = [];
+                allTransactions = [];
                 localStorage.removeItem('myFinances');
-                updateDashboard();
+                refreshApp();
             }
         }
 
-        function getCategoryColor(type) {
-            if (type === 'in') return 'bg-[#82ca9d] text-white';
-            if (type === 'inv') return 'bg-[#38bdf8] text-white';
-            return 'bg-[#fca5a5] text-white';
+        function changeMonth() {
+            currentMonth = document.getElementById('monthSelector').value;
+            updateDashboard();
         }
 
+        // Znovunačtení měsíců do Selectu
+        function updateMonthSelector() {
+            const selector = document.getElementById('monthSelector');
+            // Získání unikátních měsíců z dat
+            const months = [...new Set(allTransactions.map(tx => tx.monthYear))].filter(Boolean).sort().reverse();
+            
+            selector.innerHTML = '<option value="All">Všechny měsíce</option>';
+            months.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = formatMonthName(m);
+                if (m === currentMonth) opt.selected = true;
+                selector.appendChild(opt);
+            });
+            
+            // Pokud po promazání vybraný měsíc zmizel, přepni na All
+            if(currentMonth !== 'All' && !months.includes(currentMonth)) {
+                currentMonth = 'All';
+                selector.value = 'All';
+            }
+        }
+
+        function getCategoryStyle(type) {
+            if (type === 'in') return 'bg-emerald-100 text-emerald-700';
+            if (type === 'inv') return 'bg-sky-100 text-sky-700';
+            return 'bg-slate-100 text-slate-700';
+        }
+
+        // Hlavní funkce pro překreslení dat
         function updateDashboard() {
             let inTotal = 0, outTotal = 0, invTotal = 0;
             let expenseByCategory = {};
 
+            // Filtrace dle měsíce
+            const filteredData = currentMonth === 'All' 
+                ? allTransactions 
+                : allTransactions.filter(tx => tx.monthYear === currentMonth);
+
             const tbody = document.getElementById('transactionList');
+            const emptyState = document.getElementById('emptyState');
             tbody.innerHTML = '';
 
-            transactions.forEach(tx => {
+            if (filteredData.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            filteredData.forEach(tx => {
                 if (tx.type === 'in') inTotal += tx.amount;
                 else if (tx.type === 'inv') invTotal += Math.abs(tx.amount);
                 else {
@@ -184,28 +325,47 @@
                 }
 
                 const tr = document.createElement('tr');
-                const textColor = tx.amount < 0 ? 'text-red-600' : 'text-emerald-600';
+                tr.className = "hover:bg-slate-50 transition-colors group";
                 
+                const isNegative = tx.amount < 0;
+                const textColor = isNegative ? 'text-slate-900' : 'text-emerald-600';
+                const signIcon = isNegative 
+                    ? `<i data-lucide="arrow-down-right" class="w-4 h-4 text-rose-500 flex-shrink-0"></i>`
+                    : `<i data-lucide="arrow-up-right" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>`;
+
                 tr.innerHTML = `
-                    <td class="py-3 px-4 whitespace-nowrap text-gray-500">${tx.date}</td>
-                    <td class="py-3 px-4 text-gray-900 truncate max-w-xs">${tx.note}</td>
-                    <td class="py-3 px-4">
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium shadow-sm ${getCategoryColor(tx.type)}">${tx.category}</span>
+                    <td class="py-3 px-5 whitespace-nowrap text-slate-500">${tx.date}</td>
+                    <td class="py-3 px-5 text-slate-900 font-medium">
+                        <div class="flex items-center gap-2 truncate max-w-[200px] sm:max-w-xs">
+                            ${signIcon}
+                            <span class="truncate" title="${tx.note}">${tx.note}</span>
+                        </div>
                     </td>
-                    <td class="py-3 px-4 font-medium text-right ${textColor}">${tx.amount.toLocaleString('cs-CZ', {minimumFractionDigits: 2})} Kč</td>
+                    <td class="py-3 px-5">
+                        <span class="text-xs px-2.5 py-1 rounded-md font-medium ${getCategoryStyle(tx.type)}">${tx.category}</span>
+                    </td>
+                    <td class="py-3 px-5 font-bold text-right ${textColor}">${tx.amount.toLocaleString('cs-CZ', {minimumFractionDigits: 2})} Kč</td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            document.getElementById('totalIncome').innerText = inTotal.toLocaleString('cs-CZ', {minimumFractionDigits: 2}) + ' Kč';
-            document.getElementById('totalExpense').innerText = outTotal.toLocaleString('cs-CZ', {minimumFractionDigits: 2}) + ' Kč';
-            document.getElementById('totalInvest').innerText = invTotal.toLocaleString('cs-CZ', {minimumFractionDigits: 2}) + ' Kč';
-            document.getElementById('totalFree').innerText = (inTotal - outTotal - invTotal).toLocaleString('cs-CZ', {minimumFractionDigits: 2}) + ' Kč';
+            // Re-inicializace ikon v nových řádcích
+            lucide.createIcons();
+
+            // Aktualizace čísel v kartách
+            document.getElementById('totalIncome').innerText = inTotal.toLocaleString('cs-CZ', {minimumFractionDigits: 0}) + ' Kč';
+            document.getElementById('totalExpense').innerText = outTotal.toLocaleString('cs-CZ', {minimumFractionDigits: 0}) + ' Kč';
+            document.getElementById('totalInvest').innerText = invTotal.toLocaleString('cs-CZ', {minimumFractionDigits: 0}) + ' Kč';
+            document.getElementById('totalFree').innerText = (inTotal - outTotal - invTotal).toLocaleString('cs-CZ', {minimumFractionDigits: 0}) + ' Kč';
 
             updateCharts(inTotal, outTotal, invTotal, expenseByCategory);
         }
 
+        // Vykreslení grafů
         function updateCharts(inTotal, outTotal, invTotal, expenseByCategory) {
+            // Tailwind barvy pro graf
+            const pieColors = ['#f43f5e', '#f97316', '#eab308', '#84cc16', '#14b8a6', '#3b82f6', '#8b5cf6', '#d946ef', '#64748b'];
+
             const ctxEx = document.getElementById('expenseChart').getContext('2d');
             if (expenseChartObj) expenseChartObj.destroy();
             
@@ -215,11 +375,19 @@
                     labels: Object.keys(expenseByCategory),
                     datasets: [{
                         data: Object.values(expenseByCategory),
-                        backgroundColor: ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#2dd4bf', '#a78bfa', '#f472b6', '#38bdf8', '#818cf8'],
-                        borderWidth: 0
+                        backgroundColor: pieColors,
+                        borderWidth: 0,
+                        hoverOffset: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    cutout: '65%',
+                    plugins: { 
+                        legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Inter' } } } 
+                    } 
+                }
             });
 
             const ctxCf = document.getElementById('cashflowChart').getContext('2d');
@@ -228,18 +396,33 @@
             cashflowChartObj = new Chart(ctxCf, {
                 type: 'bar',
                 data: {
-                    labels: ['Příjmy', 'Výdaje', 'Investice', 'Zůstatek'],
+                    labels: ['Příjmy', 'Výdaje', 'Investice', 'Zbývá'],
                     datasets: [{
                         data: [inTotal, outTotal, invTotal, (inTotal - outTotal - invTotal)],
-                        backgroundColor: ['#82ca9d', '#fca5a5', '#38bdf8', '#fbbf24'],
-                        borderRadius: 6
+                        backgroundColor: ['#10b981', '#f43f5e', '#0ea5e9', '#6366f1'],
+                        borderRadius: 4,
+                        barThickness: 40
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: {
+                        y: { border: { display: false }, grid: { color: '#f1f5f9' } },
+                        x: { border: { display: false }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { bodyFont: { family: 'Inter' } } } 
+                }
             });
         }
 
-        updateDashboard();
+        function refreshApp() {
+            updateMonthSelector();
+            updateDashboard();
+        }
+
+        // První načtení
+        refreshApp();
     </script>
 </body>
 </html>
