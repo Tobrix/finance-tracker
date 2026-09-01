@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanční tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #21253a;
+    --border: #2e3348;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #4f8ef7;
+    --accent-bg: #1a2540;
+    --green: #22c55e;
+    --green-bg: #0d2318;
+    --red: #ef4444;
+    --red-bg: #2a1010;
+    --yellow: #f59e0b;
+    --radius: 10px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+  
+  /* Layout */
+  .shell { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .logo { font-size: 20px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .logo svg { color: var(--accent); }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Buttons */
+  .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .15s, border-color .15s; white-space: nowrap; }
+  .btn:hover { background: var(--surface2); border-color: #3e4560; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .btn.primary:hover { background: #3a7ae8; border-color: #3a7ae8; }
+  .btn.danger { border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: var(--red-bg); }
+
+  /* Month tabs */
+  .month-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .month-tab { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .month-tab:hover { color: var(--text); border-color: #3e4560; }
+  .month-tab.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
+  /* Upload */
+  .upload-area { border: 2px dashed var(--border); border-radius: 14px; padding: 40px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 24px; }
+  .upload-area:hover, .upload-area.drag { border-color: var(--accent); background: var(--accent-bg); }
+  .upload-area svg { color: var(--muted); margin-bottom: 12px; }
+  .upload-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .upload-sub { color: var(--muted); font-size: 13px; }
+
+  /* Status */
+  .status { border-radius: var(--radius); padding: 12px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; }
+  .status.info { background: var(--accent-bg); border: 1px solid var(--accent); color: var(--accent); }
+  .status.success { background: var(--green-bg); border: 1px solid var(--green); color: var(--green); }
+  .status.error { background: var(--red-bg); border: 1px solid var(--red); color: var(--red); }
+  .spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Summary cards */
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .card-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .card-value { font-size: 22px; font-weight: 600; }
+  .card-value.green { color: var(--green); }
+  .card-value.red { color: var(--red); }
+  .card-value.yellow { color: var(--yellow); }
+
+  /* Category grid */
+  .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 24px; }
+  .cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .15s; }
+  .cat-card:hover { border-color: #3e4560; }
+  .cat-card.active { border-color: var(--accent); background: var(--accent-bg); }
+  .cat-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .cat-name { font-size: 13px; font-weight: 500; }
+  .cat-amt { font-size: 13px; font-weight: 600; color: var(--red); }
+  .cat-amt.inc { color: var(--green); }
+  .progress { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 2px; }
+  .cat-count { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-label { font-size: 12px; color: var(--muted); }
+  .filter-chip { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+  .filter-chip:hover { color: var(--text); }
+  .filter-chip.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+  /* Transactions */
+  .txn-table { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+  .txn-head { display: grid; grid-template-columns: 75px 1fr 140px 100px; gap: 8px; padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .txn-row { display: grid; grid-template-columns: 75px 1fr 140px 100px; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); align-items: center; transition: background .1s; }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-row:hover { background: var(--surface2); }
+  .txn-date { color: var(--muted); font-size: 12px; }
+  .txn-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .txn-cat select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 11px; padding: 3px 6px; cursor: pointer; width: 100%; max-width: 140px; }
+  .txn-cat select:hover { border-color: var(--accent); }
+  .txn-amt { text-align: right; font-weight: 600; font-size: 13px; }
+  .txn-amt.pos { color: var(--green); }
+  .txn-amt.neg { color: var(--red); }
+  .txn-none { padding: 32px; text-align: center; color: var(--muted); }
+
+  /* Categories editor */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .cat-chip { display: flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; }
+  .cat-chip .x { color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+  .cat-chip .x:hover { color: var(--red); }
+  .modal-input-row { display: flex; gap: 8px; }
+  .modal-input-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px; }
+  .modal-input-row input:focus { outline: none; border-color: var(--accent); }
+
+  /* Import modal */
+  .import-area { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .import-area textarea { width: 100%; background: transparent; border: none; color: var(--text); font-family: monospace; font-size: 12px; resize: vertical; min-height: 120px; outline: none; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .section-count { font-size: 12px; color: var(--muted); }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .txn-head, .txn-row { grid-template-columns: 60px 1fr 90px; }
+    .txn-head span:nth-child(3), .txn-row .txn-cat { display: none; }
+    .summary { grid-template-columns: 1fr 1fr; }
+  }
+
+  .hidden { display: none !important; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Finanční tracker
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="openImport()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        Importovat JSON
+      </button>
+      <button class="btn" onclick="exportData()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+        Export
+      </button>
+      <button class="btn" onclick="openCatModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Kategorie
+      </button>
+      <button class="btn danger" onclick="clearAll()">Smazat vše</button>
+    </div>
+  </header>
+
+  <!-- Month tabs -->
+  <div class="month-tabs" id="monthTabs" style="margin-bottom:20px"></div>
+
+  <!-- Upload -->
+  <div class="upload-area" id="uploadArea"
+    onclick="document.getElementById('fileInput').click()"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="onDrop(event)">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <div class="upload-title">Nahrát výpis z banky (PDF)</div>
+    <div class="upload-sub">Raiffeisen, ČSOB, KB, Fio… přetáhni nebo klikni<br>Více souborů najednou je OK</div>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf" multiple style="display:none" onchange="handleFiles(this.files)">
+
+  <!-- Status -->
+  <div id="statusBar" class="status hidden">
+    <div class="spinner" id="spinner"></div>
+    <span id="statusText"></span>
+  </div>
+
+  <!-- AI hint -->
+  <div id="aiHint" class="status info hidden">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Kategorie jsou přiřazeny automaticky podle klíčových slov. Pro lepší výsledky zkopíruj transakce do Claudea – tlačítko "Exportovat pro AI" níže.</span>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent" class="hidden">
+    <!-- Summary -->
+    <div class="summary">
+      <div class="card"><div class="card-label">Příjmy celkem</div><div class="card-value green" id="sIncome">—</div></div>
+      <div class="card"><div class="card-label">Výdaje celkem</div><div class="card-value red" id="sExpense">—</div></div>
+      <div class="card"><div class="card-label">Investice / Spoření</div><div class="card-value yellow" id="sInvest">—</div></div>
+      <div class="card"><div class="card-label">Volné prostředky</div><div class="card-value" id="sBalance">—</div></div>
+    </div>
+
+    <!-- Category breakdown -->
+    <div class="section-header">
+      <div class="section-title">Podle kategorií</div>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+
+    <!-- Filters + transactions -->
+    <div class="filter-bar">
+      <span class="filter-label">Zobrazit:</span>
+      <button class="filter-chip active" onclick="setFilter('all',this)">Vše</button>
+      <button class="filter-chip" onclick="setFilter('expense',this)">Výdaje</button>
+      <button class="filter-chip" onclick="setFilter('income',this)">Příjmy</button>
+      <button class="filter-chip" onclick="setFilter('invest',this)">Investice</button>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Transakce</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="section-count" id="txnCount"></span>
+        <button class="btn" onclick="copyForAI()" style="font-size:12px;padding:5px 10px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Exportovat pro AI
+        </button>
+      </div>
+    </div>
+
+    <div class="txn-table">
+      <div class="txn-head"><span>Datum</span><span>Popis</span><span>Kategorie</span><span style="text-align:right">Částka</span></div>
+      <div id="txnBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Categories modal -->
+<div class="modal-overlay" id="catModal" onclick="if(event.target===this)closeCatModal()">
+  <div class="modal">
+    <div class="modal-title">Spravovat kategorie</div>
+    <div class="cat-chips" id="catChips"></div>
+    <div class="modal-input-row">
+      <input type="text" id="newCatInput" placeholder="Nová kategorie…" onkeydown="if(event.key==='Enter')addCat()">
+      <button class="btn primary" onclick="addCat()">Přidat</button>
+      <button class="btn" onclick="closeCatModal()">Zavřít</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="modal-overlay" id="importModal" onclick="if(event.target===this)closeImport()">
+  <div class="modal">
+    <div class="modal-title">Importovat transakce (JSON)</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Vlož JSON z Claudea – výsledek kategorizace nebo export z tohoto trackeru.</p>
+    <div class="import-area">
+      <textarea id="importInput" placeholder='[{"date":"2026-07-03","description":"Pikly duo","amount":6864,"category":"Pikly DUO"}, ...]'></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeImport()">Zrušit</button>
+      <button class="btn primary" onclick="doImport()">Importovat</button>
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── State ──────────────────────────────────────────────
+const DEF_CATS = ['Výplata','Pikly DUO','Ostatní příjem','Nájem/Ubytování','Hypotéka',
+  'Předplatné','Potraviny','Restaurace','Online nákupy','Telefon/Internet',
+  'Koníček','Oblečení/Kosmetika','Auto/Doprava','Převody/Spoření','Investice','Ostatní výdaje'];
+
+const INVEST_CATS = new Set(['Převody/Spoření','Investice']);
+const INCOME_CATS = new Set(['Výplata','Pikly DUO','Ostatní příjem']);
+
+let S = { transactions: [], categories: [...DEF_CATS], activeMonth: null, filter: 'all', selCat: null };
+
+function load() {
+  try {
+    const d = localStorage.getItem('fin_tracker');
+    if (d) { const p = JSON.parse(d); S.transactions = p.t || []; S.categories = p.c || DEF_CATS; }
+  } catch(e) {}
+  if (S.transactions.length) { buildMonths(); renderAll(); }
+}
+
+function save() {
+  try { localStorage.setItem('fin_tracker', JSON.stringify({t: S.transactions, c: S.categories})); } catch(e) {}
+}
+
+load();
+
+// ── Status bar ─────────────────────────────────────────
+function showStatus(msg, type='info', spin=true, autohide=0) {
+  const bar = document.getElementById('statusBar');
+  bar.className = 'status ' + type;
+  document.getElementById('spinner').style.display = spin ? 'block' : 'none';
+  document.getElementById('statusText').textContent = msg;
+  if (autohide) setTimeout(hideStatus, autohide);
+}
+function hideStatus() { document.getElementById('statusBar').classList.add('hidden'); }
+
+// ── PDF parsing ────────────────────────────────────────
+function onDrop(e) { e.preventDefault(); e.currentTarget.classList.remove('drag'); handleFiles(e.dataTransfer.files); }
+
+async function handleFiles(files) {
+  for (const f of files) {
+    if (f.type === 'application/pdf') await processPDF(f);
+  }
+  document.getElementById('fileInput').value = '';
+}
+
+async function processPDF(file) {
+  showStatus('Čtu ' + file.name + '…', 'info', true);
+  try {
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+    let lines = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      // Group items by Y position to reconstruct lines
+      const byY = {};
+      content.items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        if (!byY[y]) byY[y] = [];
+        byY[y].push(item.str);
+      });
+      Object.keys(byY).sort((a,b) => b-a).forEach(y => {
+        lines.push(byY[y].join(' '));
+      });
+    }
+    const txns = parseRaiffeisen(lines);
+    if (!txns.length) {
+      showStatus('Nepodařilo se rozpoznat formát výpisu. Zkus export pro AI.', 'error', false, 6000);
+      return;
+    }
+    mergeTransactions(txns, file.name);
+  } catch(err) {
+    showStatus('Chyba: ' + err.message, 'error', false, 6000);
+  }
+}
+
+// ── Raiffeisen parser ──────────────────────────────────
+function parseRaiffeisen(lines) {
+  const txns = [];
+  // Match lines containing a date pattern and amount like "-97.00 CZK" or "6 864.00 CZK"
+  const amtRe = /(-?\s*[\d\s]+[,.][\d]{2})\s*CZK/;
+  const dateRe = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/;
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const dm = line.match(dateRe);
+    if (!dm) { i++; continue; }
+
+    const day = dm[1].padStart(2,'0');
+    const month = dm[2].padStart(2,'0');
+    const year = dm[3];
+    const date = `${year}-${month}-${day}`;
+
+    // Look ahead for amount within next 8 lines
+    let amount = null, desc = '', j = i;
+    for (let k = i; k < Math.min(i+10, lines.length); k++) {
+      const am = lines[k].match(amtRe);
+      if (am) {
+        amount = parseFloat(am[1].replace(/\s/g,'').replace(',','.'));
+        j = k;
+        break;
+      }
+    }
+    if (amount === null) { i++; continue; }
+
+    // Build description from lines between date and amount
+    const descLines = lines.slice(i, j+1).join(' ');
+    desc = extractDesc(descLines, amount);
+
+    // Skip internal transfers (same account)
+    if (descLines.includes('2560942011/5500') && (descLines.includes('Jednorázová úhrada') || descLines.includes('Odchozí'))) {
+      i = j + 1; continue;
+    }
+    // Skip if Příchozí úhrada from own account
+    if (descLines.includes('2560942011/5500') && descLines.includes('Příchozí') && amount < 10000) {
+      i = j + 1; continue;
+    }
+
+    const category = autoCategory(desc, descLines, amount);
+    txns.push({ date, description: desc, amount, category });
+    i = j + 1;
+  }
+  return txns;
+}
+
+function extractDesc(raw, amount) {
+  // Try to find merchant name from known patterns
+  const patterns = [
+    /([A-Z][a-záčďéěíňóřšťůúýž][^\n;]{2,35}?);\s*[A-Z]/,
+    /PK:.*?;\s*(.+?);\s/,
+  ];
+
+  // Clean up
+  let desc = raw
+    .replace(/\d{1,2}\.\s*\d{1,2}\.\s*\d{4}/g, '')
+    .replace(/\d{10}/g, '')
+    .replace(/KS:\d+/g, '')
+    .replace(/VS:\S+/g, '')
+    .replace(/PK:\s*\S+/g, '')
+    .replace(/[-\d\s]+[,.][\d]{2}\s*CZK(\s*-[\d,.]+\s*EUR)?/g, '')
+    .replace(/CZK\/EUR/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  // Extract meaningful part
+  const merchants = [
+    'Spotify','Anthropic','Claude','Pikly duo','Trading 212','Foodora','McDonald','Temu','Allegro',
+    'AliExpress','Vinted','Agoda','Zleep','Lidl','Tesco','Albert','Kaufland','TV Nova','HeroHero',
+    'HEROHERO','Apple','Steam','LaskaKit','Zásilkovna','Rekola','CSAD','Nam Hair','Distrokid',
+    'Robinhood','oopbuy','SHOPTET','Gopay','Unimerch','LKQ','Fruitisimo','KFC','Hozan Kebab',
+    'PARKING','Moje DPO','DEUTSCHE BANK','Dekujeme','NYX','BM CESKO','ALBERT'
+  ];
+  for (const m of merchants) {
+    if (raw.toLowerCase().includes(m.toLowerCase())) {
+      return m.substring(0,35);
+    }
+  }
+
+  // Try known transaction types
+  if (raw.includes('Příchozí okamžitá úhrada') || raw.includes('Příchozí úhrada')) {
+    const nameMatch = raw.match(/([A-ZÁČĎ-Ž][a-záčďéěíňóřšťůúýž\s]{3,25}(?:\s[A-ZÁČĎ-Ž][a-z]+)?)/);
+    if (nameMatch) return ('Příchozí: ' + nameMatch[1]).substring(0,35);
+    return 'Příchozí platba';
+  }
+  if (raw.includes('Vklad hotovosti')) return 'Vklad hotovosti';
+  if (raw.includes('Odchozí okamžitá úhrada')) return 'Odchozí platba';
+  if (raw.includes('Jednorázová úhrada')) return 'Jednorázová úhrada';
+
+  return desc.substring(0, 35) || 'Platba';
+}
+
+// ── Auto-categorization by keywords ───────────────────
+const RULES = [
+  [['Pikly duo','Pikly DUO'], 'Pikly DUO'],
+  [['Výplata','výplata','mzda'], 'Výplata'],
+  [['Vklad hotovosti','Vklad'], 'Ostatní příjem'],
+  [['Robinhood','Distrokid'], 'Ostatní příjem'],
+  [['Trading 212','Investice'], 'Investice'],
+  [['Spoření','DCA'], 'Převody/Spoření'],
+  [['Spotify','Apple.com','Apple.COM','APPLE.COM','HeroHero','HEROHERO','TV Nova','TV NOVA','Steam','STEAM','Netflix'], 'Předplatné'],
+  [['Foodora','McDonald','Dekujeme','Fruitisimo','KFC','Hozan Kebab','PALAC FOOD','BM CESKO','NYX'], 'Restaurace'],
+  [['Lidl','Tesco','Albert','Kaufland','Globus','Kaufland','LKQ','Hruska'], 'Potraviny'],
+  [['Temu','Allegro','AliExpress','oopbuy','Shoptet','LaskaKit','Zásilkovna','zasilkovna','SHOPTET','Unimerch','UNIMERCH'], 'Online nákupy'],
+  [['Vinted'], 'Oblečení/Kosmetika'],
+  [['Nam Hair','NAM HAIR','DPO','Gopay *CESKE'], 'Oblečení/Kosmetika'],
+  [['Agoda','Zleep','ZLEEP','hotel','Hotel'], 'Nájem/Ubytování'],
+  [['PARKING','Parking','Rekola','CSAD','vlakem','bus'], 'Auto/Doprava'],
+  [['Carjudge'], 'Auto/Doprava'],
+  [['Distrokid','DISTROKID'], 'Koníček'],
+  [['Gopay *CESKEPOJISTENI'], 'Ostatní výdaje'],
+];
+
+function autoCategory(desc, raw, amount) {
+  const haystack = (desc + ' ' + raw).toLowerCase();
+  for (const [keywords, cat] of RULES) {
+    if (keywords.some(k => haystack.includes(k.toLowerCase()))) return cat;
+  }
+  if (amount > 0) return 'Ostatní příjem';
+  return 'Ostatní výdaje';
+}
+
+// ── Merge ──────────────────────────────────────────────
+function mergeTransactions(newTxns, filename) {
+  const keys = new Set(S.transactions.map(t => `${t.date}|${t.amount}|${t.description}`));
+  const added = newTxns.filter(t => !keys.has(`${t.date}|${t.amount}|${t.description}`));
+  S.transactions.push(...added);
+  save();
+  buildMonths();
+  renderAll();
+  document.getElementById('aiHint').classList.remove('hidden');
+  showStatus(`✓ Přidáno ${added.length} transakcí z ${filename} (celkem ${newTxns.length} nalezeno)`, 'success', false, 5000);
+}
+
+// ── Months ─────────────────────────────────────────────
+const ML = {1:'Leden',2:'Únor',3:'Březen',4:'Duben',5:'Květen',6:'Červen',7:'Červenec',8:'Srpen',9:'Září',10:'Říjen',11:'Listopad',12:'Prosinec'};
+
+function buildMonths() {
+  const ms = {};
+  S.transactions.forEach(t => { if (t.date) ms[t.date.substring(0,7)] = true; });
+  const sorted = Object.keys(ms).sort().reverse();
+  if (!S.activeMonth || !ms[S.activeMonth]) S.activeMonth = sorted[0];
+  const tabs = document.getElementById('monthTabs');
+  tabs.innerHTML = sorted.map(m => {
+    const [y, mo] = m.split('-');
+    return `<button class="month-tab ${m===S.activeMonth?'active':''}" onclick="setMonth('${m}')">${ML[+mo]} ${y}</button>`;
+  }).join('');
+}
+
+function setMonth(m) { S.activeMonth = m; S.selCat = null; renderAll(); }
+
+// ── Render ─────────────────────────────────────────────
+function renderAll() {
+  document.getElementById('mainContent').classList.remove('hidden');
+  renderSummary(); renderCats(); renderTxns();
+}
+
+function getMonthTxns() {
+  return S.transactions.filter(t => t.date && t.date.startsWith(S.activeMonth || ''));
+}
+
+function fmt(n) { return Math.round(Math.abs(n)).toLocaleString('cs-CZ') + ' Kč'; }
+
+function renderSummary() {
+  const txns = getMonthTxns();
+  let inc = 0, exp = 0, inv = 0;
+  txns.forEach(t => {
+    if (t.amount > 0) inc += t.amount;
+    else if (INVEST_CATS.has(t.category)) inv += Math.abs(t.amount);
+    else exp += Math.abs(t.amount);
+  });
+  const bal = inc - exp - inv;
+  document.getElementById('sIncome').textContent = fmt(inc);
+  document.getElementById('sExpense').textContent = fmt(exp);
+  document.getElementById('sInvest').textContent = fmt(inv);
+  const el = document.getElementById('sBalance');
+  el.textContent = (bal < 0 ? '-' : '') + fmt(bal);
+  el.className = 'card-value ' + (bal >= 0 ? 'green' : 'red');
+}
+
+function renderCats() {
+  const txns = getMonthTxns().filter(t => t.amount < 0 && !INVEST_CATS.has(t.category));
+  const bycat = {};
+  txns.forEach(t => { bycat[t.category] = (bycat[t.category] || 0) + Math.abs(t.amount); });
+  const sorted = Object.entries(bycat).sort((a,b) => b[1] - a[1]);
+  const max = sorted[0]?.[1] || 1;
+  document.getElementById('catGrid').innerHTML = sorted.map(([cat, amt]) => `
+    <div class="cat-card${S.selCat===cat?' active':''}" onclick="filterCat('${cat.replace(/'/g,"\\'")}')">
+      <div class="cat-head"><span class="cat-name">${cat}</span><span class="cat-amt">${fmt(amt)}</span></div>
+      <div class="progress"><div class="progress-bar" style="width:${Math.round(amt/max*100)}%"></div></div>
+      <div class="cat-count">${txns.filter(t=>t.category===cat).length} transakcí</div>
+    </div>`).join('');
+}
+
+function filterCat(cat) { S.selCat = S.selCat === cat ? null : cat; renderCats(); renderTxns(); }
+
+function setFilter(type, el) {
+  S.filter = type; S.selCat = null;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCats(); renderTxns();
+}
+
+function renderTxns() {
+  let txns = getMonthTxns();
+  if (S.selCat) txns = txns.filter(t => t.category === S.selCat);
+  if (S.filter === 'expense') txns = txns.filter(t => t.amount < 0 && !INVEST_CATS.has(t.category));
+  if (S.filter === 'income') txns = txns.filter(t => t.amount > 0);
+  if (S.filter === 'invest') txns = txns.filter(t => INVEST_CATS.has(t.category));
+  txns = [...txns].sort((a,b) => b.date.localeCompare(a.date));
+  document.getElementById('txnCount').textContent = txns.length + ' položek';
+
+  const catOpts = S.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('txnBody').innerHTML = txns.length
+    ? txns.map(t => {
+        const pos = t.amount > 0;
+        const [y,mo,d] = t.date.split('-');
+        const gi = S.transactions.indexOf(t);
+        const opts = S.categories.map(c => `<option value="${c}"${c===t.category?' selected':''}>${c}</option>`).join('');
+        return `<div class="txn-row">
+          <span class="txn-date">${d}.${mo}.</span>
+          <span class="txn-desc" title="${t.description}">${t.description}</span>
+          <span class="txn-cat"><select onchange="reclassify(${gi},this.value)">${opts}</select></span>
+          <span class="txn-amt ${pos?'pos':'neg'}">${pos?'+':'-'}${fmt(t.amount)}</span>
+        </div>`;
+      }).join('')
+    : '<div class="txn-none">Žádné transakce</div>';
+}
+
+function reclassify(i, cat) { S.transactions[i].category = cat; save(); renderSummary(); renderCats(); }
+
+// ── Categories modal ───────────────────────────────────
+function openCatModal() {
+  document.getElementById('catModal').classList.add('open');
+  renderCatChips();
+}
+function closeCatModal() { document.getElementById('catModal').classList.remove('open'); }
+function renderCatChips() {
+  document.getElementById('catChips').innerHTML = S.categories.map((c,i) =>
+    `<span class="cat-chip"><span>${c}</span><span class="x" onclick="delCat(${i})">×</span></span>`
+  ).join('');
+}
+function addCat() {
+  const inp = document.getElementById('newCatInput');
+  const v = inp.value.trim();
+  if (v && !S.categories.includes(v)) { S.categories.push(v); inp.value = ''; renderCatChips(); save(); }
+}
+function delCat(i) { S.categories.splice(i,1); renderCatChips(); save(); }
+
+// ── Import / Export ────────────────────────────────────
+function openImport() { document.getElementById('importModal').classList.add('open'); }
+function closeImport() { document.getElementById('importModal').classList.remove('open'); }
+
+function doImport() {
+  try {
+    const raw = document.getElementById('importInput').value.trim();
+    const txns = JSON.parse(raw);
+    if (!Array.isArray(txns)) throw new Error('Očekáván JSON array');
+    const keys = new Set(S.transactions.map(t => `${t.date}|${t.amount}`));
+    const added = txns.filter(t => t.date && t.amount != null && !keys.has(`${t.date}|${t.amount}`));
+    S.transactions.push(...added);
+    save(); buildMonths(); renderAll(); closeImport();
+    showStatus(`✓ Importováno ${added.length} transakcí`, 'success', false, 4000);
+  } catch(e) {
+    alert('Chyba při importu: ' + e.message);
+  }
+}
+
+function exportData() {
+  const data = JSON.stringify(S.transactions, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'finance-export.json';
+  a.click();
+}
+
+function copyForAI() {
+  const txns = getMonthTxns();
+  const cats = S.categories.join(', ');
+  const lines = txns.map(t => `${t.date} | ${t.description} | ${t.amount > 0 ? '+' : ''}${t.amount} Kč | aktuálně: ${t.category}`).join('\n');
+  const prompt = `Kategorizuj tyto bankovní transakce. Dostupné kategorie: ${cats}\n\nVrať POUZE JSON array ve formátu:\n[{"date":"YYYY-MM-DD","description":"popis","amount":číslo,"category":"kategorie"}]\n\nTransakce:\n${lines}`;
+  navigator.clipboard.writeText(prompt).then(() => {
+    showStatus('✓ Zkopírováno do schránky – vlož do Claudea a pak importuj výsledek tlačítkem "Importovat JSON"', 'success', false, 6000);
+  });
+}
+
+function clearAll() {
+  if (confirm('Opravdu smazat všechna data?')) {
+    S.transactions = []; S.categories = [...DEF_CATS]; S.activeMonth = null;
+    save();
+    document.getElementById('mainContent').classList.add('hidden');
+    document.getElementById('monthTabs').innerHTML = '';
+    document.getElementById('aiHint').classList.add('hidden');
+    hideStatus();
+  }
+}
+</script>
+</body>
+</html>
